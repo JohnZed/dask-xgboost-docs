@@ -87,3 +87,67 @@ ddf = dask_cudf.from_cudf(gdf, npartitions=5)
 ddf = ddf.groupby("x").mean()
 ```
 
+# Using Dask-XGBoost
+There are two functions of interest with Dask-XGBoost:
+
+1. `dask_xgboost.train`
+2. `dask_xgboost.predict`
+
+The documentation for `dask_xgboost.train` is this:
+
+```python
+help(dask_xgboost.train)
+
+Help on function train in module dask_xgboost.core:
+
+  train(client, params, data, labels, dmatrix_kwargs={}, **kwargs)
+      Train an XGBoost model on a Dask Cluster
+      
+      This starts XGBoost on all Dask workers, moves input data to those workers,
+      and then calls ``xgboost.train`` on the inputs.
+      
+      Parameters
+      ----------
+      client: dask.distributed.Client
+      params: dict
+          Parameters to give to XGBoost (see xgb.Booster.train)
+      data: dask array or dask.dataframe
+      labels: dask.array or dask.dataframe
+      dmatrix_kwargs: Keywords to give to Xgboost DMatrix
+      **kwargs: Keywords to give to XGBoost train
+      
+      Examples
+      --------
+      >>> client = Client('scheduler-address:8786')  # doctest: +SKIP
+      >>> data = dd.read_csv('s3://...')  # doctest: +SKIP
+      >>> labels = data['outcome']  # doctest: +SKIP
+      >>> del data['outcome']  # doctest: +SKIP
+      >>> train(client, params, data, labels, **normal_kwargs)  # doctest: +SKIP
+      <xgboost.core.Booster object at ...>
+      
+      See Also
+      --------
+      predict
+```
+
+An example:
+
+```python
+params = {
+  'num_rounds':   100,
+  'max_depth':    8,
+  'max_leaves':   2**8,
+  'n_gpus':       1,
+  'tree_method':  'gpu_hist',
+  'objective':    'binary:logistic',
+  'grow_policy':  'lossguide'
+}
+
+bst = dask_xgboost.train(client, params, ddf, labels, num_boost_round=params['num_rounds'])
+``` 
+
+1. `client`: the `dask.distributed.Client`
+2. `params`: the training parameters for XGBoost. Note that it is a requirement to set `'n_gpus': 1`, as it tells Dask-cuDF that each worker will have a single GPU to perform coordinated computation
+3. `ddf`: an instance of `dask_cudf.DataFrame` containing the data to be trained
+4. `labels`: an instance of `dask_cudf.Series` containing the labels for the training data
+5. `num_boost_round=params['num_rounds']`: a specification on the number of boosting rounds for the training session
