@@ -1,2 +1,2 @@
-# dask-xgboost-docs
-Documenting how to use Dask-cuDF + Dask-XGBoost for training and inference
+# Dask
+[Dask](https://dask.org "Dask: Scalable Analytics in Python") is a framework for flexibly scaling computation in Python.
