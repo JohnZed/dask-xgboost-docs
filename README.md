@@ -1,14 +1,22 @@
 # RAPIDS, Dask, and XGBoost
 
-## _It would be nice to add a little more high-level/conceptual docs at the beginning... I'm happy to help out with that tomorrow if you 
-don't mind taking a look to review..._
+Dask and XGboost are two of the most popular open source packages for data
+processing and machine learning, respectively.  RAPIDS augments them to support
+accelerated computation across many GPUs on one or several nodes.
 
-## Also it would be great to have installation instructions and GPU/system requirements (Pascal+? Tested on linux-only?)
+RAPIDS integrates cuDF, a GPU-based dataframe implementation, with a CUDA-aware
+version of Dask to accelerate data loading and preparation. These can pass data
+seamlessly into XGBoost for model training, while reducing the amount of
+unncessary data copying.
 
-## Dask
-[Dask](https://dask.org "Dask: Scalable Analytics in Python") is a framework for flexibly scaling computational graphs in Python on a single node or across a cluster.
+# 
 
-It implements several distributed datastructured, most importantly a distributed Pandas-style DataFrame that elastically scales over many workers.
+## Dask [Dask](https://dask.org "Dask: Scalable Analytics in Python") is a
+framework for flexibly scaling computational graphs in Python on a single node
+or across a cluster.
+
+It implements several distributed datastructures - most importantly a
+distributed, Pandas-style DataFrame that elastically scales over many workers.
 
 ```python
 import dask.dataframe as dd
@@ -20,8 +28,6 @@ df.head()
   1  2  b
   2  3  c
   3  4  a
-  4  5  b
-  5  6  c
 
 df2 = df[df.y == 'a'].x + 1
 ```
@@ -45,17 +51,24 @@ for column in gdf.columns:
 The [RAPIDS Fork of XGBoost](https://github.com/rapidsai/xgboost "RAPIDS XGBoost") enables XGBoost with cuDF: a user may directly pass a cuDF object into XGBoost for training, prediction, etc.
 
 ## Dask-XGBoost
-The [RAPIDS Fork of Dask-XGBoost](https://github.com/rapidsai/dask-xgboost/ "RAPIDS Dask-XGBoost") enables XGBoost with the distributed CUDA DataFrame via Dask-cuDF. A user may pass Dask-XGBoost a reference to a distributed cuDF object, and start a training session over an entire cluster from Python.
 
-## _Would be great to have a high-level set of steps, like:_
-## Training an XGboost model across multiple GPUs with Dask-XGboost just requires you to:
-##   (1) Create a CUDA-aware Dask cluster, with one worker per GPU
-##   (2) Load data into a Dask-CuDF dataframe, distributed across GPUs
-##   (3) Call XGboost's distributed training functions
+The [RAPIDS Fork of Dask-XGBoost](https://github.com/rapidsai/dask-xgboost/
+"RAPIDS Dask-XGBoost") enables XGBoost with the distributed CUDA DataFrame via
+Dask-cuDF. A user may pass Dask-XGBoost a reference to a distributed cuDF
+object, and start a training session over an entire cluster from Python.
+
+# Building a Dask-cuDF-XGBoost pipeline
+
+Training an XGboost model across multiple GPUs with Dask-XGBoost requires 3 main steps:
+   (1) Create a CUDA-aware Dask instance, with one worker per GPU
+   (2) Load data into a Dask-CuDF dataframe, distributed across GPUs
+   (3) Call XGboost's distributed training functions
 
 
-# Using Dask-cuDF
-A user may instantiate a single-node Dask-cuDF cluster like this:
+## (1) Create a CUDA-aware Dask instance
+
+Setting up the Dask instance to use all GPUs on a single machine is
+straightforward:
 
 ```python
 import cudf
@@ -81,11 +94,9 @@ client = Client(cluster)
 client
 ```
 
-Note the use of `from dask_cuda import LocalCUDACluster`. [Dask-CUDA](https://github.com/rapidsai/dask-cuda) is a lightweight set of utilities useful for setting up a Dask cluster. These calls instantiate a Dask-cuDF cluster in a single node environment. To instantiate a multi-node Dask-cuDF cluster, a user must use `dask-scheduler` and `dask-cuda-worker`.
+Note the use of `from dask_cuda import LocalCUDACluster`. [Dask-CUDA](https://github.com/rapidsai/dask-cuda) is a lightweight set of utilities useful for setting up a Dask cluster. These calls instantiate a Dask-cuDF cluster in a single node environment. To instantiate a multi-node Dask-cuDF cluster, a user must use `dask-scheduler` and `dask-cuda-worker`. See the [Dask distributed documentation][http://distributed.dask.org/en/latest/setup.html] for more details.
 
-_Are there docs on multi-nodes setup? Maybe in an advanced section?)
-
-Once a `client` is available, a user may commission the client to perform tasks:
+Once a `client` is available, a user may use the client to run tasks across the workers:
 
 ```python
 def do_computation():
@@ -99,7 +110,7 @@ Alternatively, a user may employ `dask_cudf` to distribute both data and computa
 ## _TODO: Not necessarily in this chunk, but I think one of the big missing pieces to me is understanding how
 ## dask_cudf distributes data across the workers / nodes / GPUs. I think this will be a common question for
 ## customers too_
-
+##
 ## _Would it be better to show an example that uses dask to do the data loading?_
 
 ```python
@@ -119,9 +130,7 @@ There are two functions of interest with Dask-XGBoost:
 1. `dask_xgboost.train`
 2. `dask_xgboost.predict`
 
-The documentation for `dask_xgboost.train` is this:
-
-## _As above, I think that talking about how data gets distributed would be helpful_
+The documentation for `dask_xgboost.train` provides the clearest explanation:
 
 ```python
 help(dask_xgboost.train)
